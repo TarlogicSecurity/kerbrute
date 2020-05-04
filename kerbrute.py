@@ -175,6 +175,9 @@ class KerberosBruter:
             elif ex.getErrorCode() == constants.ErrorCodes.KDC_ERR_PREAUTH_FAILED.value:
                 self._report_good_user(user)
 
+            elif ex.getErrorCode() == constants.ErrorCodes.KDC_ERR_KEY_EXPIRED.value:
+                self._report_expired_password(user, password)
+
             elif ex.getErrorCode() == constants.ErrorCodes.KDC_ERR_CLIENT_REVOKED.value:
                 self._report_blocked_user(user)
             else:
@@ -222,6 +225,21 @@ class KerberosBruter:
                 ccache_file = user + '.ccache'
                 ccache.saveFile(ccache_file)
                 logging.info('Saved TGT in %s' % ccache_file)
+
+    def _report_expired_password(self, user, password):
+        with self.report_lock:
+            if user not in self.good_users:
+                self.good_users[user] = True
+
+            if user in self.good_credentials:
+                return
+
+            self.good_credentials[user] = password
+
+            logging.info('Stupendous (Expired password) => %s:%s' % (user, password))
+
+            if self.out_creds_file:
+                self.out_creds_file.write("%s:%s\n" % (user, password))
 
     def _report_bad_user(self, user):
         with self.report_lock:
