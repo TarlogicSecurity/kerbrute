@@ -12,7 +12,7 @@ As a result, the script generates a list of valid credentials discovered, and th
 
 To install:
 ```
-lsgit clone https://github.com/TarlogicSecurity/kerbrute
+git clone https://github.com/TarlogicSecurity/kerbrute
 cd kerbrute
 pip install -r requirements.txt
 ```
