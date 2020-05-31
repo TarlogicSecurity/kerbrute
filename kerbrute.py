@@ -229,6 +229,7 @@ class KerberosBruter:
 
             if self.out_creds_file:
                 self.out_creds_file.write("%s:%s\n" % (user, password))
+                self.out_creds_file.flush()
 
             if self.save_ticket:
                 ccache = CCache()
@@ -252,6 +253,7 @@ class KerberosBruter:
 
             if self.out_creds_file:
                 self.out_creds_file.write("%s:%s\n" % (user, password))
+                self.out_creds_file.flush()
 
     def _report_bad_user(self, user):
         with self.report_lock:
@@ -268,6 +270,7 @@ class KerberosBruter:
 
             if self.out_users_file:
                 self.out_users_file.write("%s\n" % user)
+                self.out_users_file.flush()
 
             self.good_users[user] = True
             logging.info('Valid user => %s' % user)
@@ -279,6 +282,7 @@ class KerberosBruter:
 
             if self.out_users_file:
                 self.out_users_file.write("%s\n" % user)
+                self.out_users_file.flush()
 
             self.good_users[user] = True
             logging.info('Valid user => %s [NOT PREAUTH]' % user)
