@@ -26,7 +26,7 @@ pip install -r requirements.txt
 
 Help without arguments:
 ```shell
-root@kali:kerbrute# python kerbrute.py
+root@kali:~# kerbrute
 Impacket v0.9.18 - Copyright 2018 SecureAuth Corporation
 
 usage: kerbrute.py [-h] [-debug] (-user USER | -users USERS)
@@ -54,7 +54,7 @@ Examples:
 
 Example of execution:
 ```shell
-root@kali:kerbrute# python kerbrute.py -domain jurassic.park -users users.txt -passwords passwords.txt -outputfile jurassic_passwords.txt
+root@kali:~# kerbrute -domain jurassic.park -users users.txt -passwords passwords.txt -outputfile jurassic_passwords.txt
 Impacket v0.9.18 - Copyright 2018 SecureAuth Corporation
 
 [*] Stupendous => triceratops:Sh4rpH0rns
