@@ -10,7 +10,12 @@ As a result, the script generates a list of valid credentials discovered, and th
 
 ## Installation
 
-To install:
+From pypi:
+```
+pip3 install kerbrute
+```
+
+From repo:
 ```
 git clone https://github.com/TarlogicSecurity/kerbrute
 cd kerbrute
