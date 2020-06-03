@@ -255,6 +255,3 @@ class KerberosBruter:
             self.bad_users[user] = True
             logging.info('Blocked/Disabled user => %s' % user)
 
-
-if __name__ == '__main__':
-    main()
