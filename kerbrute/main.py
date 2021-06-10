@@ -44,6 +44,7 @@ class KerbruteArgumentParser:
         user_group = self._parser.add_mutually_exclusive_group(required=True)
         user_group.add_argument('-user', help='User to perform bruteforcing')
         user_group.add_argument('-users', help='File with user per line')
+        user_group.add_argument('-userpass', help='File with users and passwords (separated by :)')
 
         password_group = self._parser.add_mutually_exclusive_group()
         password_group.add_argument('-password', help='Password to perform bruteforcing')
@@ -73,8 +74,8 @@ class KerbruteArgumentParser:
             sys.exit(1)
 
         args = self._parser.parse_args()
-
         args.users = self._get_file_lines(args.users) if args.users else [args.user]
+        args.userpass = self._get_file_lines(args.userpass) if args.userpass else False
 
         if args.passwords:
             args.passwords = self._get_file_lines(args.passwords)
@@ -108,7 +109,7 @@ def main():
     out_users_file = open(args.outputusers, "w") if args.outputusers else None
 
     kerberos_bruter = KerberosBruter(args.domain, args.dc_ip, args.save_ticket, out_creds_file, out_users_file)
-    kerberos_bruter.attack(args.users, args.passwords, args.threads)
+    kerberos_bruter.attack(args.users, args.passwords, args.threads, args.userpass)
 
     if out_creds_file:
         out_creds_file.close()
@@ -142,14 +143,21 @@ class KerberosBruter:
         self.out_creds_file = out_creds_file
         self.out_users_file = out_users_file
 
-    def attack(self, users, passwords, threads=1):
+    def attack(self, users, passwords, threads=1, userpass=False):
         pool = ThreadPoolExecutor(threads)
         threads = []
 
-        for password in passwords:
-            for user in users:
+        if userpass:
+            for line in userpass:
+                user = line.split(":")[0]
+                password = line.split(":")[1]
                 t = pool.submit(self._handle_user_password, user, password)
                 threads.append(t)
+        else:           
+            for password in passwords:
+                for user in users:
+                    t = pool.submit(self._handle_user_password, user, password)
+                    threads.append(t)
 
         for f in as_completed(threads):
             try:
